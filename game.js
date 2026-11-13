@@ -410,12 +410,50 @@
     const spacing = 12;
     return { x: right - (n - 1 - index) * spacing, y: 80 };
   }
-  function slotPos(index, total) {
-    const n = Math.max(total || 1, 1);
+  function counterSlotPos(index) {
+    const n = Math.max(1, currentLocation().maxQueue);
     const start = 34;
     const end = 70;
     const x = n === 1 ? 52 : start + (end - start) * (index / Math.max(1, n - 1));
     return { x: x, y: COUNTER_Y };
+  }
+  function holdingPos(index) {
+    return { x: 24 + index * 11, y: 30 + (index % 2) * 5 };
+  }
+  function slotPos(index, total) {
+    return counterSlotPos(index);
+  }
+  const HOLD_CAP = 2;
+  function isAtCounter(c) {
+    return c && c.area !== "hold" && ["entering", "waiting", "ordered", "ready"].includes(c.status);
+  }
+  function occupiedSlots() {
+    const used = new Set();
+    for (const c of customers) {
+      if (isAtCounter(c) && c.slot != null) used.add(c.slot);
+    }
+    return used;
+  }
+  function nextFreeSlot() {
+    const n = currentLocation().maxQueue;
+    const used = occupiedSlots();
+    for (let i = 0; i < n; i++) if (!used.has(i)) return i;
+    return -1;
+  }
+  function holdingCount() {
+    return customers.filter((c) => c.area === "hold" && c.status !== "leaving").length;
+  }
+  function promoteHolder() {
+    const slot = nextFreeSlot();
+    if (slot < 0) return false;
+    const holder = customers.find((c) => c.area === "hold" && c.status !== "leaving");
+    if (!holder) return false;
+    holder.area = "counter";
+    holder.slot = slot;
+    if (holder.status === "waiting") holder.status = "entering";
+    startWalk(holder, counterSlotPos(slot), false);
+    holder.walkDur = Math.max(0.6, holder.walkDur);
+    return true;
   }
   function takeSpot(customer) { return { x: customer.x, y: WORK_Y }; }
   function serveSpot(customer) { return { x: customer.x, y: WORK_Y }; }
@@ -471,11 +509,20 @@
 
   function spawnCustomer(goodId) {
     const loc = currentLocation();
-    if (queuedCount() >= loc.maxQueue) return null;
+    let slot = nextFreeSlot();
+    let area = "counter";
+    let dest;
+    if (slot >= 0) {
+      dest = counterSlotPos(slot);
+    } else if (holdingCount() < HOLD_CAP) {
+      area = "hold";
+      slot = holdingCount();
+      dest = holdingPos(slot);
+    } else {
+      return null;
+    }
     const type = CUSTOMER_TYPES[Math.floor(Math.random() * CUSTOMER_TYPES.length)];
     const good = goodId ? goodById(goodId) : pickGood();
-    const slot = queuedCount();
-    const dest = slotPos(slot, slot + 1);
     const customer = {
       id: nextCustomerId++,
       type, goodId: good.id,
@@ -483,6 +530,7 @@
       patience: 70, maxPatience: 70,
       x: DOOR.x, y: DOOR.y,
       slot,
+      area,
       walkFrom: { x: DOOR.x, y: DOOR.y },
       walkTo: dest,
       walkT: 0,
@@ -494,29 +542,16 @@
     startWalk(customer, dest, false);
     customer.walkDur = Math.max(0.7, customer.walkDur);
     customers.push(customer);
-    reassignSlots();
     ringBell();
     return customer;
   }
 
   function reassignSlots() {
-    const queued = customers.filter((c) => ["entering", "waiting", "ordered", "ready"].includes(c.status));
-    queued.forEach((c, i) => {
-      c.slot = i;
-      const target = slotPos(i, queued.length);
-      if (c.status === "entering") {
-        c.walkTo = target;
-      } else if (dist(c, target) > 1.5 && !c.walking) {
-        startWalk(c, target, false);
-        c.walkDur = Math.max(0.25, c.walkDur * 0.6);
-      } else if (c.walking && c.status !== "leaving") {
-        c.walkTo = target;
-      }
-    });
+    /* Intentionally a no-op: assigned counter spots stay put until that customer leaves. */
   }
 
   function takeOrder(customer) {
-    if (!customer || customer.status !== "waiting") return false;
+    if (!customer || customer.status !== "waiting" || customer.area === "hold") return false;
     customer.status = "ordered";
     pendingOrders.push({ customerId: customer.id, goodId: customer.goodId });
     uiDirty = true;
@@ -558,7 +593,7 @@
         }
       }
     }
-    reassignSlots();
+    promoteHolder();
   }
   function deliverTo(customer) {
     if (!customer || (customer.status !== "ready" && customer.status !== "ordered")) return false;
@@ -667,7 +702,7 @@
 
   function pickStaffTask(role) {
     if (role === "cashier") {
-      const waiter = customers.find((c) => c.status === "waiting");
+      const waiter = customers.find((c) => c.status === "waiting" && c.area !== "hold");
       if (waiter) return { type: "take", customerId: waiter.id };
     } else if (role === "cook") {
       if (pendingOrders.length) {
@@ -742,7 +777,7 @@
   function tickFloor(dt) {
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
-      if (queuedCount() < currentLocation().maxQueue) spawnCustomer();
+      if (nextFreeSlot() >= 0 || holdingCount() < HOLD_CAP) spawnCustomer();
       spawnTimer = spawnInterval() * (0.85 + Math.random() * 0.3);
     }
 
@@ -781,7 +816,7 @@
     }
     if (customers.some((c) => c.gone)) {
       customers = customers.filter((c) => !c.gone);
-      reassignSlots();
+      promoteHolder();
     }
   }
 
@@ -1176,35 +1211,6 @@
     } else if (kind === "door") body.innerHTML = '<h2>🚪 Entrance</h2><p class="lede">Customers come in through this door and walk down to the counter. Tap them when they arrive.</p>';
     bindSheetButtons();
   }
-  function bindSheetButtons() {
-    const root = $("sheet-root");
-    root.querySelectorAll("[data-close-sheet]").forEach((b) => b.addEventListener("click", closeSheet));
-    root.querySelectorAll("[data-up]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (btn.disabled) return;
-        const key = btn.dataset.up;
-        let ok = false;
-        if (key === "ovenSpeed") ok = buyOvenSpeed();
-        else if (key === "ovenSlot") ok = buyOvenSlot();
-        else if (key === "quality") ok = buyQuality();
-        else if (key === "aroma") ok = buyAroma();
-        else if (key.startsWith("good:")) ok = buyGood(key.slice(5));
-        else if (key.startsWith("staff:")) ok = buyStaff(key.slice(6));
-        else if (key.startsWith("decor:")) ok = buyDecor(key.split(":")[1], key.split(":")[2]);
-        else if (key.startsWith("outfit:")) ok = buyOutfit(key.slice(7));
-        if (ok) { renderSheet(); renderAll(); }
-      });
-    });
-    root.querySelectorAll("[data-look]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (btn.disabled) return;
-        const cat = btn.dataset.cat;
-        if (cat === "outfit") { if (equipOutfit(btn.dataset.look)) { renderSheet(); renderAll(); } }
-        else if (equipDecor(cat, btn.dataset.look)) { renderSheet(); renderAll(); }
-      });
-    });
-  }
-
   function upgradeRow(icon, title, meta, cost, action, extra) {
     const can = cost == null || state.coins >= cost;
     const btn = cost == null
@@ -1366,12 +1372,27 @@
   }
 
   function bindSheetButtons() {
-    const body = $("sheet-body");
-    if (!body) return;
-    body.querySelectorAll("[data-up]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (btn.disabled) return;
-        const key = btn.dataset.up;
+    /* Close / buy / look are handled by delegated listeners on #sheet-root (bindSheetRoot). */
+  }
+
+  function bindSheetRoot() {
+    const root = $("sheet-root");
+    if (!root || root.dataset.bound === "1") return;
+    root.dataset.bound = "1";
+    root.addEventListener("click", (ev) => {
+      const closer = ev.target.closest("[data-close-sheet]");
+      if (closer) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeSheet();
+        return;
+      }
+      const up = ev.target.closest("[data-up]");
+      if (up) {
+        if (up.disabled) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const key = up.dataset.up;
         let ok = false;
         if (key === "ovenSpeed") ok = buyOvenSpeed();
         else if (key === "ovenSlot") ok = buyOvenSlot();
@@ -1382,16 +1403,33 @@
         else if (key.startsWith("decor:")) ok = buyDecor(key.split(":")[1], key.split(":")[2]);
         else if (key.startsWith("outfit:")) ok = buyOutfit(key.slice(7));
         if (ok) { renderSheet(); renderAll(); }
-      });
+        return;
+      }
+      const look = ev.target.closest("[data-look]");
+      if (look) {
+        if (look.disabled) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const cat = look.dataset.cat;
+        if (cat === "outfit") { if (equipOutfit(look.dataset.look)) { renderSheet(); renderAll(); } }
+        else if (equipDecor(cat, look.dataset.look)) { renderSheet(); renderAll(); }
+      }
     });
-    body.querySelectorAll("[data-look]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (btn.disabled) return;
-        const cat = btn.dataset.cat;
-        if (cat === "outfit") { if (equipOutfit(btn.dataset.look)) { renderSheet(); renderAll(); } }
-        else if (equipDecor(cat, btn.dataset.look)) { renderSheet(); renderAll(); }
-      });
+
+    let swipeStart = null;
+    root.addEventListener("pointerdown", (ev) => {
+      const handle = ev.target.closest(".sheet-handle");
+      if (!handle) return;
+      swipeStart = ev.clientY;
+      try { handle.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
     });
+    root.addEventListener("pointerup", (ev) => {
+      if (swipeStart == null) return;
+      const dy = ev.clientY - swipeStart;
+      swipeStart = null;
+      if (dy > 48) closeSheet();
+    });
+    root.addEventListener("pointercancel", () => { swipeStart = null; });
   }
 
   function applyLocationClass() {
@@ -2017,6 +2055,7 @@
   }
 
   function bind() {
+    bindSheetRoot();
     document.querySelectorAll(".nav-btn").forEach((btn) => {
       btn.addEventListener("click", () => setScreen(btn.dataset.screen));
     });
@@ -2156,7 +2195,7 @@
         achievements: Object.assign({}, state.achievements),
         served: state.served,
         cps: automatedCps(),
-        customers: customers.map((c) => ({ id: c.id, status: c.status, goodId: c.goodId, x: c.x, y: c.y })),
+        customers: customers.map((c) => ({ id: c.id, status: c.status, goodId: c.goodId, x: c.x, y: c.y, slot: c.slot, area: c.area || "counter", walking: !!c.walking })),
         pendingOrders: pendingOrders.slice(),
         ovenJobs: ovens.map((o) => o.job ? Object.assign({}, o.job) : null),
         player: { x: player.x, y: player.y, walking: player.walking, task: player.task }

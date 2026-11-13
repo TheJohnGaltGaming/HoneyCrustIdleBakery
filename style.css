@@ -852,6 +852,13 @@ button {
   background: none;
   border: 0;
 }
+.actor.customer {
+  width: 76px;
+  height: 96px;
+  /* Extra invisible padding so the hitbox stays generous while walking in. */
+  padding: 8px 12px 6px;
+  box-sizing: border-box;
+}
 .actor .shadow {
   position: absolute;
   left: 50%;
@@ -1287,13 +1294,6 @@ button {
   from { transform: translateY(24px); opacity: 0.6; }
   to { transform: translateY(0); opacity: 1; }
 }
-.sheet-handle {
-  width: 40px;
-  height: 5px;
-  background: #e2c8a4;
-  border-radius: 999px;
-  margin: 4px auto 10px;
-}
 .sheet h2 {
   font-size: 1.15rem;
   margin-bottom: 4px;
@@ -1310,15 +1310,42 @@ button {
 }
 .sheet-close {
   position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   background: var(--foam);
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
+  z-index: 5;
+  pointer-events: auto;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
 }
+.sheet h2 { padding-right: 48px; }
+.sheet-handle {
+  width: 80px;
+  height: 22px;
+  background: transparent;
+  margin: 0 auto 6px;
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+}
+.sheet-handle::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 9px;
+  height: 5px;
+  background: #e2c8a4;
+  border-radius: 999px;
+}
+.sheet-backdrop { cursor: pointer; }
 
 .card-list, .shop-list {
   display: flex;
