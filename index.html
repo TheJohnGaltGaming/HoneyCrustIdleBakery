@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#C4814A" />
+  <title>Honeycrust Bakery</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🥐</span>
+        <div class="brand-text">
+          <h1>Honeycrust</h1>
+          <p>Bakery Idle</p>
+        </div>
+      </div>
+      <div class="currencies">
+        <div class="currency gems" title="Gems">
+          <span aria-hidden="true">💎</span>
+          <span data-testid="gem-count" id="gem-count">0</span>
+        </div>
+        <button type="button" class="icon-btn" id="settings-btn" aria-label="Settings">⚙️</button>
+      </div>
+    </header>
+
+    <section class="wallet" aria-live="polite">
+      <div class="coins-row">
+        <span class="coin-icon" aria-hidden="true">🪙</span>
+        <span data-testid="coin-count" id="coin-count" class="coin-count">0</span>
+        <span class="coin-label">coins</span>
+      </div>
+      <div class="rates">
+        <span data-testid="cps" id="cps-display">0/s</span>
+        <span id="boost-chip" class="chip hidden">2× boost</span>
+        <span id="prestige-chip" class="chip hidden">★ 1.0×</span>
+      </div>
+    </section>
+
+    <section class="tap-stage">
+      <button type="button" id="oven-btn" data-testid="oven" class="oven-btn" aria-label="Tap the oven to bake">
+        <div class="steam" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <svg class="oven-art" viewBox="0 0 220 220" aria-hidden="true">
+          <ellipse cx="110" cy="198" rx="78" ry="12" fill="rgba(74,44,42,0.12)" />
+          <rect x="38" y="70" width="144" height="122" rx="22" fill="#E08A62" />
+          <rect x="38" y="70" width="144" height="122" rx="22" fill="url(#ovenBody)" />
+          <rect x="32" y="52" width="156" height="32" rx="12" fill="#C96B45" />
+          <rect x="32" y="52" width="156" height="32" rx="12" fill="url(#ovenTop)" />
+          <circle cx="110" cy="28" r="22" fill="#F7F0E6" />
+          <path d="M90 34 Q110 8 130 34 Q110 24 90 34Z" fill="#F7F0E6" stroke="#E8D9C4" stroke-width="2" />
+          <rect x="58" y="92" width="104" height="78" rx="14" fill="#5A3228" />
+          <rect x="66" y="100" width="88" height="62" rx="10" fill="url(#glow)" />
+          <ellipse cx="110" cy="148" rx="26" ry="8" fill="#C4814A" />
+          <path d="M90 146 Q110 118 130 146" fill="#E8A87C" />
+          <path d="M96 144 Q110 126 124 144" fill="#F4C95D" />
+          <rect x="150" y="128" width="22" height="10" rx="5" fill="#F4C95D" />
+          <rect x="52" y="184" width="18" height="12" rx="3" fill="#8B4518" />
+          <rect x="150" y="184" width="18" height="12" rx="3" fill="#8B4518" />
+          <defs>
+            <linearGradient id="ovenBody" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#F0A07A" />
+              <stop offset="100%" stop-color="#D56B45" />
+            </linearGradient>
+            <linearGradient id="ovenTop" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#E08960" />
+              <stop offset="100%" stop-color="#C45A38" />
+            </linearGradient>
+            <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFE09A" />
+              <stop offset="60%" stop-color="#F4A44A" />
+              <stop offset="100%" stop-color="#E07A30" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="oven-caption">Tap to bake!</span>
+      </button>
+      <div id="float-layer" class="float-layer" aria-hidden="true"></div>
+    </section>
+
+    <nav class="tabs" aria-label="Game sections">
+      <button type="button" class="tab active" data-tab="bake">🍞 Bake</button>
+      <button type="button" class="tab" data-tab="upgrades">✨ Upgrades</button>
+      <button type="button" class="tab" data-tab="stars">⭐ Stars</button>
+      <button type="button" class="tab" data-tab="shop">💎 Shop</button>
+    </nav>
+
+    <main class="panels">
+      <section id="panel-bake" class="panel active">
+        <div class="panel-toolbar">
+          <p class="hint">Hire help to keep baking while you rest.</p>
+          <div class="buy-toggle" role="group" aria-label="Buy amount">
+            <button type="button" data-qty="1" class="active">1</button>
+            <button type="button" data-qty="10">10</button>
+            <button type="button" data-qty="25">25</button>
+            <button type="button" data-qty="max">Max</button>
+          </div>
+        </div>
+        <div id="producer-list" class="card-list"></div>
+      </section>
+
+      <section id="panel-upgrades" class="panel">
+        <p class="hint">Make every tap count. These upgrades grow with your bakery.</p>
+        <div id="upgrade-list" class="card-list"></div>
+      </section>
+
+      <section id="panel-stars" class="panel">
+        <div class="prestige-card">
+          <div class="prestige-hero">⭐</div>
+          <h2>Recipe Stars</h2>
+          <p class="lede">Reset your bakery to discover legendary recipes. Stars give a permanent production boost.</p>
+          <div class="prestige-stats">
+            <div>
+              <span class="label">Owned</span>
+              <strong id="stars-owned">0</strong>
+            </div>
+            <div>
+              <span class="label">Multiplier</span>
+              <strong id="stars-mult">1.00×</strong>
+            </div>
+            <div>
+              <span class="label">This run</span>
+              <strong id="stars-run-coins">0</strong>
+            </div>
+          </div>
+          <div class="preview-box">
+            <p id="stars-preview">Earn 250K coins this run to gain your first Recipe Star.</p>
+          </div>
+          <button type="button" id="prestige-btn" class="primary-btn" disabled>Discover Recipe Stars</button>
+          <p class="fine-print">Producers, coins, and upgrades reset. Stars and gems stay with you.</p>
+        </div>
+      </section>
+
+      <section id="panel-shop" class="panel">
+        <div class="placeholder-banner">Prototype shop — no real ads or purchases</div>
+        <h3 class="shop-heading">Optional rewards</h3>
+        <p class="hint">Ads are always optional. Watch one only if you want a bonus.</p>
+        <div class="shop-list">
+          <article class="shop-card">
+            <div class="shop-icon">📺</div>
+            <div class="shop-info">
+              <h3>Double offline earnings</h3>
+              <p>The next time you return, offline coins are doubled.</p>
+            </div>
+            <button type="button" id="ad-offline-btn" class="shop-btn" data-testid="ad-offline">Watch ad</button>
+          </article>
+          <article class="shop-card">
+            <div class="shop-icon">⚡</div>
+            <div class="shop-info">
+              <h3>2× boost for 30 min</h3>
+              <p>Double baking speed and tap value for half an hour.</p>
+            </div>
+            <button type="button" id="ad-boost-btn" class="shop-btn" data-testid="ad-boost">Watch ad</button>
+          </article>
+        </div>
+        <h3 class="shop-heading">Time skips <span class="tiny-tag">Placeholder</span></h3>
+        <p class="hint">Spend gems to collect the coins your bakery would earn over that time.</p>
+        <div class="shop-list">
+          <article class="shop-card">
+            <div class="shop-icon">⏳</div>
+            <div class="shop-info">
+              <h3>1 hour skip</h3>
+              <p>Instant production for 1 hour.</p>
+            </div>
+            <button type="button" class="shop-btn skip-btn" data-hours="1" data-cost="12">12 💎</button>
+          </article>
+          <article class="shop-card">
+            <div class="shop-icon">⏰</div>
+            <div class="shop-info">
+              <h3>4 hour skip</h3>
+              <p>Instant production for 4 hours.</p>
+            </div>
+            <button type="button" class="shop-btn skip-btn" data-hours="4" data-cost="35">35 💎</button>
+          </article>
+          <article class="shop-card">
+            <div class="shop-icon">🌙</div>
+            <div class="shop-info">
+              <h3>24 hour skip</h3>
+              <p>Instant production for a full day.</p>
+            </div>
+            <button type="button" class="shop-btn skip-btn" data-hours="24" data-cost="90">90 💎</button>
+          </article>
+        </div>
+        <p class="fine-print">Gems are earned by playing (milestones, taps, and prestige). Nothing here charges real money in this prototype.</p>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <div id="ad-overlay" class="ad-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ad-title">
+    <div class="ad-card">
+      <p class="tiny-tag">Prototype placeholder</p>
+      <h2 id="ad-title">Watching a sample ad</h2>
+      <p>No real ad network is connected. Enjoy the bonus in 3 seconds.</p>
+      <div class="ad-bar"><div id="ad-bar-fill"></div></div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
